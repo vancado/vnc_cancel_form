@@ -1,0 +1,8 @@
+services:
+
+  Vancado\VncCancelForm\Command\ClearFolderCommand:
+    tags:
+      - name: 'console.command'
+        command: 'vnccancelform:clearfolder'
+        description: 'Clear powermail pdf folder'
+        hidden: false
