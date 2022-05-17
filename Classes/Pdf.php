@@ -55,10 +55,26 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
             $pdf->Merge();
             $pdf->Output("F", GeneralUtility::getFileAbsFileName($pdfTempFile));
 
-            // Flatten PDF with graphicsmagick
-            shell_exec("gm convert -density 300 " . $pdfTempFile . " " . $pdfTempFile);
+            $pdfFlatTempFile = GeneralUtility::tempnam($pdfFilename, '.pdf');
+
+            if ($settings['flatten'] && $settings['flattenTool']) {
+                switch ($settings['flattenTool']) {
+                    case 'gs':
+                        // Flatten PDF with ghostscript
+                        @shell_exec("gs convert -density 300 " . $pdfTempFile . " " . $pdfFlatTempFile);
+                        break;
+                    case 'pdftocairo':
+                        // Flatten PDF with pdftocairo
+                        @shell_exec('pdftocairo -pdf ' . $pdfTempFile . ' ' . $pdfFlatTempFile);
+                        break;
+                }
+            }
         } else {
             throw new Exception("No pdf file is set in Typoscript. Please set tx_powermailpdf.settings.sourceFile if you want to use the filling feature.", 1417432239);
+        }
+
+        if (file_exists($pdfFlatTempFile)) {
+            return $folder->addFile($pdfFlatTempFile);
         }
 
         return $folder->addFile($pdfTempFile);
