@@ -67,7 +67,7 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
                 switch ($settings['flattenTool']) {
                     case 'gs':
                         // Flatten PDF with ghostscript
-                        @shell_exec("gs convert -density 300 " . $pdfTempFile . " " . $pdfFlatTempFile);
+                        @shell_exec("gs -sDEVICE=pdfwrite -dSubsetFonts=false -dPDFSETTINGS=/default -dNOPAUSE -dBATCH -sOutputFile=" . $pdfFlatTempFile . " " . $pdfTempFile);
                         break;
                     case 'pdftocairo':
                         // Flatten PDF with pdftocairo
