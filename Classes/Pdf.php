@@ -47,17 +47,18 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
         $pdfOriginal = GeneralUtility::getFileAbsFileName($GLOBALS['TSFE']->tmpl->setup['plugin.']['tx_powermailpdf.']['settings.']['sourceFile']);
 
         if (!empty($pdfOriginal)) {
+            $pdfFlatTempFile = (string) NULL;
             $info = pathinfo($pdfOriginal);
             $pdfFilename = basename($pdfOriginal, '.' . $info['extension']) . '_';
             $pdfTempFile = GeneralUtility::tempnam($pdfFilename, '.pdf');
+
             $pdf = new \FPDM($pdfOriginal);
             $pdf->Load($fdfDataStrings, true); // second parameter: false if field values are in ISO-8859-1, true if UTF-8
             $pdf->Merge();
             $pdf->Output("F", GeneralUtility::getFileAbsFileName($pdfTempFile));
 
-            $pdfFlatTempFile = GeneralUtility::tempnam($pdfFilename, '.pdf');
-
             if ($settings['flatten'] && $settings['flattenTool']) {
+                $pdfFlatTempFile = GeneralUtility::tempnam($pdfFilename, '.pdf');
                 switch ($settings['flattenTool']) {
                     case 'gs':
                         // Flatten PDF with ghostscript
@@ -74,7 +75,7 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
         }
 
         if (file_exists($pdfFlatTempFile)) {
-            return $folder->addFile($pdfFlatTempFile);
+           return $folder->addFile($pdfFlatTempFile);
         }
 
         return $folder->addFile($pdfTempFile);
