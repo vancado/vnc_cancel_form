@@ -21,6 +21,7 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
     {
 
         $settings = $GLOBALS['TSFE']->tmpl->setup['plugin.']['tx_powermailpdf.']['settings.'];
+        $encoding = $settings['encoding'];
 
         /** @var Folder $folder */
         $folder = ResourceFactory::getInstance()->getFolderObjectFromCombinedIdentifier($settings['target.']['pdf']);
@@ -39,7 +40,11 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
         foreach ($fieldMap as $key => $value) {
             foreach ($answers as $answer) {
                 if ($value == $answer->getField()->getMarker()) {
-                    $fdfDataStrings[$key] = $answer->getValue();
+                    if ($encoding) {
+                        $fdfDataStrings[$key] = iconv('UTF-8', $encoding, $answer->getValue());
+                    } else {
+                        $fdfDataStrings[$key] = $answer->getValue();
+                    }
                 }
             }
         }
@@ -47,13 +52,13 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
         $pdfOriginal = GeneralUtility::getFileAbsFileName($GLOBALS['TSFE']->tmpl->setup['plugin.']['tx_powermailpdf.']['settings.']['sourceFile']);
 
         if (!empty($pdfOriginal)) {
-            $pdfFlatTempFile = (string) NULL;
+            $pdfFlatTempFile = (string) null;
             $info = pathinfo($pdfOriginal);
             $pdfFilename = basename($pdfOriginal, '.' . $info['extension']) . '_';
             $pdfTempFile = GeneralUtility::tempnam($pdfFilename, '.pdf');
 
             $pdf = new \FPDM($pdfOriginal);
-            $pdf->Load($fdfDataStrings, true); // second parameter: false if field values are in ISO-8859-1, true if UTF-8
+            $pdf->Load($fdfDataStrings, !$encoding); // second parameter: false if field values are in ISO-8859-1, true if UTF-8
             $pdf->Merge();
             $pdf->Output("F", GeneralUtility::getFileAbsFileName($pdfTempFile));
 
@@ -75,7 +80,7 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
         }
 
         if (file_exists($pdfFlatTempFile)) {
-           return $folder->addFile($pdfFlatTempFile);
+            return $folder->addFile($pdfFlatTempFile);
         }
 
         return $folder->addFile($pdfTempFile);
