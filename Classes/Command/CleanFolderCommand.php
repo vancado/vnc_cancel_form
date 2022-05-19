@@ -21,7 +21,7 @@ class CleanFolderCommand extends Command
             ->addArgument(
                 'folder',
                 InputArgument::OPTIONAL,
-                'folder name',
+                'folder name'
             )
             ->addArgument(
                 'offset',
