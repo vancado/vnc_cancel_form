@@ -12,6 +12,16 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class Pdf extends \Undkonsorten\Powermailpdf\Pdf
 {
+    protected $encoding = false;
+
+    protected function encodeValue($value) {
+        if ($this->encoding) {
+            return iconv('UTF-8', $this->encoding, $value);
+        } else {
+            return $value;
+        }
+    }
+
     /**
      * @param Mail $mail
      * @return File
@@ -21,7 +31,7 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
     {
 
         $settings = $GLOBALS['TSFE']->tmpl->setup['plugin.']['tx_powermailpdf.']['settings.'];
-        $encoding = $settings['encoding'];
+        $this->encoding = $settings['encoding'];
 
         /** @var Folder $folder */
         $folder = ResourceFactory::getInstance()->getFolderObjectFromCombinedIdentifier($settings['target.']['pdf']);
@@ -30,6 +40,7 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
         if (!class_exists('\FPDM')) {
             @include 'phar://' . ExtensionManagementUtility::extPath('powermailpdf') . 'Resources/Private/PHP/fpdm.phar/vendor/autoload.php';
         }
+       
 
         //Normal Fields
         $fieldMap = $GLOBALS['TSFE']->tmpl->setup['plugin.']['tx_powermailpdf.']['settings.']['fieldMap.'];
@@ -37,17 +48,37 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
         $answers = $mail->getAnswers();
         $fdfDataStrings = array();
 
-        foreach ($fieldMap as $key => $value) {
+        foreach ($fieldMap as $fieldID => $fieldConfig) {
             foreach ($answers as $answer) {
-                if ($value == $answer->getField()->getMarker()) {
-                    if ($encoding) {
-                        $fdfDataStrings[$key] = iconv('UTF-8', $encoding, $answer->getValue());
-                    } else {
-                        $fdfDataStrings[$key] = $answer->getValue();
+                $pdfField_name = explode('.', $fieldID)[0];
+
+                if (is_array($fieldConfig)) {
+                    $pdfField_type = $fieldConfig['type'];
+                    $pdfField_value = $fieldConfig['form_value'];
+                    $formField_name = $fieldConfig['form_name'];
+                } else {
+                    $pdfField_type = 'text';
+                    $formField_name = $fieldConfig;
+                }
+
+                if ($formField_name == $answer->getField()->getMarker()) {
+                    if ($pdfField_type == 'text') {
+                        $pdfField_value = $this->encodeValue($answer->getValue());
+                    } else if ($pdfField_type == 'checkbox') {
+                        if ($answer->getValue() == $fieldConfig['form_value']) {
+                            $pdfField_value = $this->encodeValue($fieldConfig['pdf_value']);
+                        }
+                    } else if ($pdfField_type == 'radio') {
+                        
                     }
                 }
+                $fdfDataStrings[$pdfField_name] = $pdfField_value;
             }
         }
+
+        // print_r($fieldMap);
+        // print_r($fdfDataStrings);
+        // die;
 
         $pdfOriginal = GeneralUtility::getFileAbsFileName($GLOBALS['TSFE']->tmpl->setup['plugin.']['tx_powermailpdf.']['settings.']['sourceFile']);
 
@@ -58,7 +89,7 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
             $pdfTempFile = GeneralUtility::tempnam($pdfFilename, '.pdf');
 
             $pdf = new \FPDM($pdfOriginal);
-            $pdf->Load($fdfDataStrings, !$encoding); // second parameter: false if field values are in ISO-8859-1, true if UTF-8
+            $pdf->Load($fdfDataStrings, !$this->encoding); // second parameter: false if field values are in ISO-8859-1, true if UTF-8
             $pdf->Merge();
             $pdf->Output("F", GeneralUtility::getFileAbsFileName($pdfTempFile));
 
