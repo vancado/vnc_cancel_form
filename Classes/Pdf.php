@@ -14,7 +14,12 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
 {
     protected $encoding = false;
 
+
+
+
+
     protected function encodeValue($value) {
+        if($value == '') $value = 'k.A.';
         if ($this->encoding) {
             return iconv('UTF-8', $this->encoding, $value);
         } else {
@@ -46,10 +51,13 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
         $fieldMap = $GLOBALS['TSFE']->tmpl->setup['plugin.']['tx_powermailpdf.']['settings.']['fieldMap.'];
 
         $answers = $mail->getAnswers();
-        $fdfDataStrings = array();
 
+        $fdfDataStrings = array();
+        $pdfField_value = null;
         foreach ($fieldMap as $fieldID => $fieldConfig) {
             foreach ($answers as $answer) {
+
+
                 $pdfField_name = explode('.', $fieldID)[0];
 
                 if (is_array($fieldConfig)) {
@@ -64,6 +72,7 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
                 if ($formField_name == $answer->getField()->getMarker()) {
                     if ($pdfField_type == 'text') {
                         $pdfField_value = $this->encodeValue($answer->getValue());
+
                     } else if ($pdfField_type == 'checkbox') {
                         if ($answer->getValue() == $fieldConfig['form_value']) {
                             $pdfField_value = $this->encodeValue($fieldConfig['pdf_value']);
@@ -71,14 +80,15 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
                     } else if ($pdfField_type == 'radio') {
                         
                     }
+                } else {
+                    continue;
                 }
                 $fdfDataStrings[$pdfField_name] = $pdfField_value;
+
             }
         }
 
-        // print_r($fieldMap);
-        // print_r($fdfDataStrings);
-        // die;
+
 
         $pdfOriginal = GeneralUtility::getFileAbsFileName($GLOBALS['TSFE']->tmpl->setup['plugin.']['tx_powermailpdf.']['settings.']['sourceFile']);
 
