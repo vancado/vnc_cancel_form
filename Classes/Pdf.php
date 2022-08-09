@@ -7,19 +7,24 @@ use TYPO3\CMS\Core\Error\Exception;
 use TYPO3\CMS\Core\Resource\File;
 use TYPO3\CMS\Core\Resource\Folder;
 use TYPO3\CMS\Core\Resource\ResourceFactory;
+use TYPO3\CMS\Core\TypoScript\TypoScriptService;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\TypoScript\Parser\TypoScriptParser;
+use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 
 class Pdf extends \Undkonsorten\Powermailpdf\Pdf
 {
-    protected $encoding = false;
+    protected $encoding = null;
 
-
-
-
-
-    protected function encodeValue($value) {
-        if($value == '') $value = 'k.A.';
+    protected function encodeValue($value)
+    {
+        if ($value == '') {
+            $value = 'k.A.';
+        }
+        if (is_array($value)) {
+            $value = implode(',', $value);
+        }
         if ($this->encoding) {
             return iconv('UTF-8', $this->encoding, $value);
         } else {
@@ -45,10 +50,9 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
         if (!class_exists('\FPDM')) {
             @include 'phar://' . ExtensionManagementUtility::extPath('powermailpdf') . 'Resources/Private/PHP/fpdm.phar/vendor/autoload.php';
         }
-       
 
         //Normal Fields
-        $fieldMap = $GLOBALS['TSFE']->tmpl->setup['plugin.']['tx_powermailpdf.']['settings.']['fieldMap.'];
+        $fieldMap = $settings['fieldMap.'];
 
         $answers = $mail->getAnswers();
 
@@ -56,8 +60,6 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
         $pdfField_value = null;
         foreach ($fieldMap as $fieldID => $fieldConfig) {
             foreach ($answers as $answer) {
-
-
                 $pdfField_name = explode('.', $fieldID)[0];
 
                 if (is_array($fieldConfig)) {
@@ -72,23 +74,32 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
                 if ($formField_name == $answer->getField()->getMarker()) {
                     if ($pdfField_type == 'text') {
                         $pdfField_value = $this->encodeValue($answer->getValue());
-
-                    } else if ($pdfField_type == 'checkbox') {
+                    } elseif ($pdfField_type == 'checkbox') {
                         if ($answer->getValue() == $fieldConfig['form_value']) {
                             $pdfField_value = $this->encodeValue($fieldConfig['pdf_value']);
                         }
-                    } else if ($pdfField_type == 'radio') {
-                        
                     }
                 } else {
                     continue;
                 }
                 $fdfDataStrings[$pdfField_name] = $pdfField_value;
-
             }
         }
 
+        // Variables
+        $variables = $settings['variables.'];
 
+        $typoScriptService = GeneralUtility::makeInstance(TypoScriptService::class);
+        $variables = $typoScriptService->convertTypoScriptArrayToPlainArray($variables);
+
+        if (!empty($variables)) {
+            $cObject = GeneralUtility::makeInstance(ContentObjectRenderer::class);
+            foreach ($variables as $key => $item) {
+                $type = $item['_typoScriptNodeValue'];
+                unset($item['_typoScriptNodeValue']);
+                $fdfDataStrings[$key] = $cObject->cObjGetSingle($type, $item);
+            }
+        }
 
         $pdfOriginal = GeneralUtility::getFileAbsFileName($GLOBALS['TSFE']->tmpl->setup['plugin.']['tx_powermailpdf.']['settings.']['sourceFile']);
 
@@ -105,6 +116,7 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
 
             if ($settings['flatten'] && $settings['flattenTool']) {
                 $pdfFlatTempFile = GeneralUtility::tempnam($pdfFilename, '.pdf');
+                $tempFile = GeneralUtility::tempnam($pdfFilename, '.pdf');
                 switch ($settings['flattenTool']) {
                     case 'gs':
                         // Flatten PDF with ghostscript
@@ -113,6 +125,11 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
                     case 'pdftocairo':
                         // Flatten PDF with pdftocairo
                         @shell_exec('pdftocairo -pdf ' . $pdfTempFile . ' ' . $pdfFlatTempFile);
+                        break;
+                    case 'pdftk':
+                        // Flatten PDF with pdftk
+                        @shell_exec('pdftk ' . $pdfTempFile . ' generate_fdf output ' . $tempFile);
+                        @shell_exec('pdftk ' . $pdfTempFile . ' fill_form ' . $tempFile . ' output ' . $pdfFlatTempFile . ' flatten');
                         break;
                 }
             }
