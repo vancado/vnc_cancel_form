@@ -87,17 +87,18 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
         }
 
         // Variables
-        $variables = $settings['variables.'];
+        if (isset($settings['variables.'])) {
+            $variables = $settings['variables.'];
 
-        $typoScriptService = GeneralUtility::makeInstance(TypoScriptService::class);
-        $variables = $typoScriptService->convertTypoScriptArrayToPlainArray($variables);
-
-        if (!empty($variables)) {
-            $cObject = GeneralUtility::makeInstance(ContentObjectRenderer::class);
-            foreach ($variables as $key => $item) {
-                $type = $item['_typoScriptNodeValue'];
-                unset($item['_typoScriptNodeValue']);
-                $fdfDataStrings[$key] = $cObject->cObjGetSingle($type, $item);
+            if (!empty($variables)) {
+                $typoScriptService = GeneralUtility::makeInstance(TypoScriptService::class);
+                $variables = $typoScriptService->convertTypoScriptArrayToPlainArray($variables);
+                $cObject = GeneralUtility::makeInstance(ContentObjectRenderer::class);
+                foreach ($variables as $key => $item) {
+                    $type = $item['_typoScriptNodeValue'];
+                    unset($item['_typoScriptNodeValue']);
+                    $fdfDataStrings[$key] = $cObject->cObjGetSingle($type, $item);
+                }
             }
         }
 
