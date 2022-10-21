@@ -44,7 +44,8 @@ class Pdf extends \Undkonsorten\Powermailpdf\Pdf
         $this->encoding = $settings['encoding'];
 
         /** @var Folder $folder */
-        $folder = ResourceFactory::getInstance()->getFolderObjectFromCombinedIdentifier($settings['target.']['pdf']);
+        $resourceFactory = GeneralUtility::makeInstance(ResourceFactory::class);
+        $folder = $resourceFactory->getFolderObjectFromCombinedIdentifier($settings['target.']['pdf']);
 
         // Include \FPDM library from phar file, if not included already (e.g. composer installation)
         if (!class_exists('\FPDM')) {
