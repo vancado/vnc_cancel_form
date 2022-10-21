@@ -12,7 +12,7 @@ $EM_CONF[$_EXTKEY] = [
     'constraints' => [
         'depends' => [
             'typo3' => '10.4.0-11.99.99',
-            'powermailpdf' => '3.0.0-3.99.99'
+            'powermailpdf' => '4.0.0-4.99.99'
         ],
         'conflicts' => [],
         'suggests' => [],
